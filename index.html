@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS: Distributed Infrastructure</title>
+    <style>
+        :root {
+            --bg-color: #0c0c0c;
+            --text-color: #00ff00;
+            --dim-text: #888888;
+            --highlight: #ffffff;
+        }
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide-container {
+            width: 80%;
+            max-width: 1000px;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide {
+            display: none;
+            font-size: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        h1, h2 {
+            color: var(--highlight);
+            border-bottom: 1px dashed var(--dim-text);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        ul {
+            list-style-type: square;
+        }
+
+        li {
+            margin-bottom: 20px;
+        }
+
+        .code-block {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            padding: 20px;
+            color: #ccc;
+            font-size: 1.2rem;
+            white-space: pre;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: var(--dim-text);
+            font-size: 1rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slide-container">
+        
+        <div class="slide active">
+            <h1>> DNS: Distributed Hierarchical Infrastructure_</h1>
+            <p style="color: var(--dim-text);">Routing, Resolution, and Eventual Consistency</p>
+            <div class="code-block">
+user@system:~$ cat /etc/resolv.conf
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+            </div>
+        </div>
+
+        <div class="slide">
+            <h2>> The Hierarchy (The Tree of Truth)</h2>
+            <div class="code-block">
+  . (ROOT)
+  ├── .com (TLD)
+  │   └── google.com (Authoritative)
+  └── .org (TLD)
+      └── wikipedia.org (Authoritative)
+            </div>
+            <ul>
+                <li><b>Root (.):</b> The 13 logical entry points. Knows TLDs, not domains.</li>
+                <li><b>TLD (.com, .net):</b> Managed by registries. Delegates downward.</li>
+                <li><b>Authoritative:</b> The final ledger (A, AAAA, CNAME records).</li>
+                <li><b>Strict Delegation:</b> Prevents single points of failure. Partitioned globally.</li>
+            </ul>
+        </div>
+
+        <div class="slide">
+            <h2>> Network Layer (Port 53)</h2>
+            <ul>
+                <li><b>Default: UDP (Connectionless).</b></li>
+                <li><b>Why:</b> Eliminates TCP 3-way handshake latency for billions of micro-queries.</li>
+                <li><b>The Limit:</b> 512 bytes payload limit (historically).</li>
+                <li><b>TCP Fallback:</b> If response > 512 bytes, the <code>TC</code> (Truncated) bit is set. Client retries over TCP. Also used for Zone Transfers (AXFR).</li>
+            </ul>
+        </div>
+
+        <div class="slide">
+            <h2>> Global Scale (BGP Anycast)</h2>
+            <ul>
+                <li><b>The Myth:</b> "There are only 13 Root Servers."</li>
+                <li><b>The Reality:</b> 1,700+ physical servers share those 13 IP addresses globally.</li>
+                <li><b>Mechanism:</b> Border Gateway Protocol (BGP) Anycast routing.</li>
+                <li><b>Result:</b> The network protocol inherently routes queries to the geographically nearest server. Zero load balancers required.</li>
+            </ul>
+        </div>
+
+        <div class="slide">
+            <h2>> The Distributed Cache</h2>
+            <ul>
+                <li>DNS strictly favors <b>Availability</b> over Consistency (CAP Theorem).</li>
+                <li><b>Caching Layers:</b> Browser -> OS -> Local/ISP Recursive Resolver.</li>
+                <li><b>TTL (Time To Live):</b> Dictates cache expiration in seconds.</li>
+                <li><b>The Trade-off:</b> 
+                    <ul>
+                        <li>High TTL = Low latency, high availability.</li>
+                        <li>Low TTL = Fast propagation, higher query load to authoritative servers.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="slide">
+            <h2>> The Live Trace</h2>
+            <p>Tracing the exact resolution path (Root -> TLD -> Authoritative):</p>
+            <div class="code-block">
+user@system:~$ dig +trace google.com
+
+; <<>> DiG 9.16.1-Ubuntu <<>> +trace google.com
+.               518400  IN  NS  a.root-servers.net.
+.               518400  IN  NS  b.root-servers.net.
+;; Received 525 bytes from 127.0.0.53#53(127.0.0.53) in 0 ms
+
+com.            172800  IN  NS  a.gtld-servers.net.
+com.            172800  IN  NS  b.gtld-servers.net.
+;; Received 1170 bytes from 198.41.0.4#53(a.root-servers.net) in 12 ms
+
+google.com.     172800  IN  NS  ns2.google.com.
+google.com.     172800  IN  NS  ns1.google.com.
+;; Received 346 bytes from 192.5.6.30#53(a.gtld-servers.net) in 15 ms
+
+google.com.     300     IN  A   142.250.190.46
+;; Received 55 bytes from 216.239.32.10#53(ns1.google.com) in 10 ms
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer" id="slide-counter">1 / 6</div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const counter = document.getElementById('slide-counter');
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.classList.remove('active');
+                if (i === index) {
+                    slide.classList.add('active');
+                }
+            });
+            counter.innerText = `${index + 1} / ${slides.length}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                currentSlide = Math.min(currentSlide + 1, slides.length - 1);
+                showSlide(currentSlide);
+            } else if (e.key === 'ArrowLeft') {
+                currentSlide = Math.max(currentSlide - 1, 0);
+                showSlide(currentSlide);
+            }
+        });
+
+        // Click to advance
+        document.body.addEventListener('click', () => {
+            currentSlide = Math.min(currentSlide + 1, slides.length - 1);
+            showSlide(currentSlide);
+        });
+    </script>
+</body>
+</html>
+
