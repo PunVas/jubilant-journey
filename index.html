@@ -12,71 +12,90 @@
             --highlight: #ffffff;
         }
         
+        * {
+            box-sizing: border-box;
+        }
+
         body, html {
             margin: 0;
             padding: 0;
-            height: 100%;
+            height: 100vh;
+            width: 100vw;
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Courier New', Courier, monospace;
-            overflow: hidden;
+            overflow: hidden; /* ABSOLUTELY NO SCROLLING */
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .slide-container {
-            width: 80%;
-            max-width: 1000px;
-            height: 80%;
+            width: 85vw;
+            height: 85vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            position: relative;
         }
 
         .slide {
             display: none;
-            font-size: 1.5rem;
-            line-height: 1.6;
+            font-size: 3vh; /* Responsive font sizing */
+            line-height: 1.4;
+            height: 100%;
         }
 
         .slide.active {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
             animation: fadeIn 0.2s ease-in-out;
         }
 
-        h1, h2 {
+        h1 {
+            font-size: 4.5vh;
+            color: var(--highlight);
+            border-bottom: 2px dashed var(--dim-text);
+            padding-bottom: 2vh;
+            margin: 0 0 3vh 0;
+        }
+
+        h2 {
+            font-size: 4vh;
             color: var(--highlight);
             border-bottom: 1px dashed var(--dim-text);
-            padding-bottom: 10px;
-            margin-bottom: 30px;
+            padding-bottom: 1vh;
+            margin: 0 0 2vh 0;
         }
 
         ul {
             list-style-type: square;
+            margin: 0;
+            padding-left: 3vw;
         }
 
         li {
-            margin-bottom: 20px;
+            margin-bottom: 1.5vh;
         }
 
         .code-block {
             background-color: #1a1a1a;
             border: 1px solid #333;
-            padding: 20px;
+            padding: 2vh 2vw;
             color: #ccc;
-            font-size: 1.2rem;
+            font-size: 2.5vh;
             white-space: pre;
-            overflow-x: auto;
-            margin-top: 20px;
+            overflow: hidden; /* Prevents internal scrolling */
+            margin-top: 2vh;
         }
 
         .footer {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
+            bottom: 2vh;
+            right: 2vw;
             color: var(--dim-text);
-            font-size: 1rem;
+            font-size: 2.5vh;
         }
 
         @keyframes fadeIn {
@@ -90,8 +109,8 @@
     <div class="slide-container">
         
         <div class="slide active">
-            <h1>> DNS: Distributed Hierarchical Infrastructure_</h1>
-            <p style="color: var(--dim-text);">Routing, Resolution, and Eventual Consistency</p>
+            <h1>> DNS: Distributed Infrastructure_</h1>
+            <p style="color: var(--dim-text); margin-top: 0;">Routing, Resolution, and Eventual Consistency</p>
             <div class="code-block">
 user@system:~$ cat /etc/resolv.conf
 nameserver 8.8.8.8
@@ -100,19 +119,28 @@ nameserver 1.1.1.1
         </div>
 
         <div class="slide">
-            <h2>> The Hierarchy (The Tree of Truth)</h2>
+            <h2>> The Hierarchy (Tree of Truth)</h2>
             <div class="code-block">
   . (ROOT)
   ├── .com (TLD)
   │   └── google.com (Authoritative)
-  └── .org (TLD)
-      └── wikipedia.org (Authoritative)
             </div>
             <ul>
-                <li><b>Root (.):</b> The 13 logical entry points. Knows TLDs, not domains.</li>
-                <li><b>TLD (.com, .net):</b> Managed by registries. Delegates downward.</li>
-                <li><b>Authoritative:</b> The final ledger (A, AAAA, CNAME records).</li>
-                <li><b>Strict Delegation:</b> Prevents single points of failure. Partitioned globally.</li>
+                <li><b>Root (.):</b> The 13 logical entry points. Knows TLDs.</li>
+                <li><b>TLD (.com):</b> Managed by registries. Delegates downward.</li>
+                <li><b>Authoritative:</b> The final ledger of truth.</li>
+                <li><b>Strict Delegation:</b> Prevents single points of failure.</li>
+            </ul>
+        </div>
+
+        <div class="slide">
+            <h2>> The Schema: DNS Records</h2>
+            <ul>
+                <li><b>A / AAAA:</b> The actual IP pointers (IPv4 / IPv6).</li>
+                <li><b>CNAME:</b> Canonical Name. Aliases used for load balancing.</li>
+                <li><b>NS (Name Server):</b> The Delegation Record. This makes the distributed hierarchy possible.</li>
+                <li><b>MX:</b> Mail Exchange. Routes SMTP traffic.</li>
+                <li><b>TXT:</b> Text strings. Now crucial for Security (SPF, DKIM).</li>
             </ul>
         </div>
 
@@ -120,9 +148,9 @@ nameserver 1.1.1.1
             <h2>> Network Layer (Port 53)</h2>
             <ul>
                 <li><b>Default: UDP (Connectionless).</b></li>
-                <li><b>Why:</b> Eliminates TCP 3-way handshake latency for billions of micro-queries.</li>
+                <li><b>Why:</b> Eliminates TCP 3-way handshake latency.</li>
                 <li><b>The Limit:</b> 512 bytes payload limit (historically).</li>
-                <li><b>TCP Fallback:</b> If response > 512 bytes, the <code>TC</code> (Truncated) bit is set. Client retries over TCP. Also used for Zone Transfers (AXFR).</li>
+                <li><b>TCP Fallback:</b> If response > 512 bytes, the <code>TC</code> (Truncated) bit triggers. Client retries over TCP. Also used for Zone Transfers.</li>
             </ul>
         </div>
 
@@ -130,54 +158,48 @@ nameserver 1.1.1.1
             <h2>> Global Scale (BGP Anycast)</h2>
             <ul>
                 <li><b>The Myth:</b> "There are only 13 Root Servers."</li>
-                <li><b>The Reality:</b> 1,700+ physical servers share those 13 IP addresses globally.</li>
-                <li><b>Mechanism:</b> Border Gateway Protocol (BGP) Anycast routing.</li>
-                <li><b>Result:</b> The network protocol inherently routes queries to the geographically nearest server. Zero load balancers required.</li>
+                <li><b>The Reality:</b> 1,700+ physical servers share 13 IPs.</li>
+                <li><b>Mechanism:</b> Border Gateway Protocol (BGP) Anycast.</li>
+                <li><b>Result:</b> Network inherently routes queries to the geographically nearest server. Zero load balancers needed.</li>
             </ul>
         </div>
 
         <div class="slide">
-            <h2>> The Distributed Cache</h2>
+            <h2>> Eventual Consistency & Caching</h2>
             <ul>
-                <li>DNS strictly favors <b>Availability</b> over Consistency (CAP Theorem).</li>
-                <li><b>Caching Layers:</b> Browser -> OS -> Local/ISP Recursive Resolver.</li>
-                <li><b>TTL (Time To Live):</b> Dictates cache expiration in seconds.</li>
+                <li>DNS strictly favors <b>Availability</b> over Consistency.</li>
+                <li><b>Caching Layers:</b> Browser -> OS -> ISP Resolver.</li>
+                <li><b>TTL (Time To Live):</b> Dictates cache expiration.</li>
                 <li><b>The Trade-off:</b> 
                     <ul>
                         <li>High TTL = Low latency, high availability.</li>
-                        <li>Low TTL = Fast propagation, higher query load to authoritative servers.</li>
+                        <li>Low TTL = Fast update propagation, high query load.</li>
                     </ul>
                 </li>
             </ul>
         </div>
 
         <div class="slide">
-            <h2>> The Live Trace</h2>
-            <p>Tracing the exact resolution path (Root -> TLD -> Authoritative):</p>
-            <div class="code-block">
-user@system:~$ dig +trace google.com
-
-; <<>> DiG 9.16.1-Ubuntu <<>> +trace google.com
+            <h2>> Tracing the Hierarchy</h2>
+            <div class="code-block" style="font-size: 2.1vh; line-height: 1.2;">
+; <<>> DiG +trace google.com
 .               518400  IN  NS  a.root-servers.net.
-.               518400  IN  NS  b.root-servers.net.
-;; Received 525 bytes from 127.0.0.53#53(127.0.0.53) in 0 ms
+;; Received 525 bytes from 127.0.0.53#53 in 0 ms
 
 com.            172800  IN  NS  a.gtld-servers.net.
-com.            172800  IN  NS  b.gtld-servers.net.
-;; Received 1170 bytes from 198.41.0.4#53(a.root-servers.net) in 12 ms
+;; Received 1170 bytes from 198.41.0.4#53(root) in 12 ms
 
-google.com.     172800  IN  NS  ns2.google.com.
 google.com.     172800  IN  NS  ns1.google.com.
-;; Received 346 bytes from 192.5.6.30#53(a.gtld-servers.net) in 15 ms
+;; Received 346 bytes from 192.5.6.30#53(gtld) in 15 ms
 
 google.com.     300     IN  A   142.250.190.46
-;; Received 55 bytes from 216.239.32.10#53(ns1.google.com) in 10 ms
+;; Received 55 bytes from 216.239.32.10#53(ns1) in 10 ms
             </div>
         </div>
 
     </div>
 
-    <div class="footer" id="slide-counter">1 / 6</div>
+    <div class="footer" id="slide-counter">1 / 7</div>
 
     <script>
         let currentSlide = 0;
@@ -195,16 +217,15 @@ google.com.     300     IN  A   142.250.190.46
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown') {
                 currentSlide = Math.min(currentSlide + 1, slides.length - 1);
                 showSlide(currentSlide);
-            } else if (e.key === 'ArrowLeft') {
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
                 currentSlide = Math.max(currentSlide - 1, 0);
                 showSlide(currentSlide);
             }
         });
 
-        // Click to advance
         document.body.addEventListener('click', () => {
             currentSlide = Math.min(currentSlide + 1, slides.length - 1);
             showSlide(currentSlide);
@@ -212,4 +233,3 @@ google.com.     300     IN  A   142.250.190.46
     </script>
 </body>
 </html>
-
